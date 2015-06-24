@@ -64,6 +64,8 @@ public class ScreenShotDialog extends Dialog {
     private RawImage mRawImage;
     private Clipboard mClipboard;
     private Point mDownPoint = new Point(0, 0);
+    private long mLastTime = 0;
+    
     private double mScale = 1.0d;
 
 	/** Number of 90 degree rotations applied to the current image */
@@ -228,14 +230,15 @@ public class ScreenShotDialog extends Dialog {
 
         // "done" button
         Button done = new Button(shell, SWT.PUSH);
-        done.setText("Done");
+        done.setText("Turn-ON");
         data = new GridData(GridData.HORIZONTAL_ALIGN_CENTER);
         data.widthHint = 80;
         done.setLayoutData(data);
         done.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                shell.close();
+//                shell.close();
+                runShellCmd(shell, "adb shell input keyevent 82");
             }
         });
         
@@ -288,7 +291,17 @@ public class ScreenShotDialog extends Dialog {
                 System.out.println("mouseUp:" + event);
                 String strCmd;
 				if (event.x == mDownPoint.x && event.y == mDownPoint.y) {
-					strCmd = String.format("adb shell input tap %d %d", (int)(event.x / mScale), (int)(event.y / mScale));
+					//adb shell input swipe 479 776 479 776 3000
+					if (System.currentTimeMillis() - mLastTime >= 2000) {
+						System.out.println("long tap...");
+						strCmd = String.format(
+								"adb shell input swipe %d %d %d %d 3000",
+								(int) (event.x / mScale),
+								(int) (event.y / mScale),
+								(int) (event.x / mScale),
+								(int) (event.y / mScale));
+					} else
+						strCmd = String.format("adb shell input tap %d %d", (int)(event.x / mScale), (int)(event.y / mScale));
 				} else {
 					strCmd = String.format("adb shell input swipe %d %d %d %d",
 							(int) (mDownPoint.x / mScale),
@@ -297,6 +310,8 @@ public class ScreenShotDialog extends Dialog {
 				}
 				
 				runShellCmd(shell, strCmd);
+				
+				mLastTime = 0;
             }
 
             @Override
@@ -304,6 +319,8 @@ public class ScreenShotDialog extends Dialog {
             	System.out.println("mouseDown:" + event);
             	mDownPoint.x = event.x;
             	mDownPoint.y = event.y;
+            	
+            	mLastTime = System.currentTimeMillis();
             }
 
             @Override
